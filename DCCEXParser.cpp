@@ -217,7 +217,7 @@ void DCCEXParser::parse(Print & stream, const byte *com, bool banAsync) {
         return;      
      
     case 'c':     // READ CURRENT <c>
-        StringFormatter::send(stream,F("<a %d>"), DCCWaveform::mainTrack.getLastCurrent());
+        StringFormatter::send(stream,F("<a %d>"), (int)(MAIN_SENSE_FACTOR * DCCWaveform::mainTrack.getLastCurrent()));
         return;
 
     case 'Q':         // SENSORS <Q>

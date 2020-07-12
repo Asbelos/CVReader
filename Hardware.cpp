@@ -64,10 +64,10 @@ void Hardware::setSignal(bool isMainTrack, bool high) {
 int Hardware::getCurrentRaw(bool isMainTrack) {
   // tooo much crap for a interrupt routine. Will see how that goes.
   byte faultpin = isMainTrack ? MAIN_FAULT_PIN : PROG_FAULT_PIN;
-  byte signalpin = isMainTrack ? MAIN_SIGNAL_PIN : PROG_SIGNAL_PIN;
+  byte powerpin = isMainTrack ? MAIN_POWER_PIN : PROG_POWER_PIN;
 
-  if (faultpin != UNUSED_PIN && digitalRead(faultpin) == LOW && digitalRead(signalpin) == HIGH)
-      return 32767; // MAXINT because we don't know the actual current, return as high as we can
+  if (faultpin != UNUSED_PIN && digitalRead(faultpin) == LOW && digitalRead(powerpin) == HIGH)
+      return (int) (32000 / (isMainTrack ? MAIN_SENSE_FACTOR : PROG_SENSE_FACTOR)); // 32A should be enough
   // IMPORTANT:  This function can be called in Interrupt() time within the 56uS timer
   //             The default analogRead takes ~100uS which is catastrphic
   //             so analogReadFast is used here. (-2uS) 
@@ -76,7 +76,7 @@ int Hardware::getCurrentRaw(bool isMainTrack) {
 }
 
 unsigned int Hardware::getCurrentMilliamps(bool isMainTrack, int raw) {
-  return (int)(raw * (isMainTrack ? MAIN_SENSE_FACTOR : PROG_SENSE_FACTOR));
+  return (unsigned int)(raw * (isMainTrack ? MAIN_SENSE_FACTOR : PROG_SENSE_FACTOR));
 }
 
 void Hardware::setCallback(int duration, void (*isr)()) {
