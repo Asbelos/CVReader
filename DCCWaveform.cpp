@@ -37,7 +37,7 @@ void DCCWaveform::begin() {
 
 void DCCWaveform::loop() {
   mainTrack.checkPowerOverload();
-  //progTrack.checkPowerOverload();
+  progTrack.checkPowerOverload();
 }
 
 
@@ -101,7 +101,6 @@ void DCCWaveform::setPowerMode(POWERMODE mode) {
 
 
 void DCCWaveform::checkPowerOverload() {
-DIAG(F("start of checkPowerOverload()\n"));
   
   if (millis() - lastSampleTaken  < sampleDelay) return;
   lastSampleTaken = millis();
@@ -114,9 +113,7 @@ DIAG(F("start of checkPowerOverload()\n"));
       break;
     case POWERMODE::ON:
       // Check current
-DIAG(F("before getCurrentRaw\n"));
       lastCurrent = Hardware::getCurrentRaw(isMainTrack);
-DIAG(F("after  getCurrentRaw\n"));
       if (lastCurrent <= tripValue) {
         sampleDelay = POWER_SAMPLE_ON_WAIT;
 	if(power_good_counter<100)
@@ -124,13 +121,9 @@ DIAG(F("after  getCurrentRaw\n"));
 	else
 	  if (power_sample_overload_wait>POWER_SAMPLE_OVERLOAD_WAIT) power_sample_overload_wait=POWER_SAMPLE_OVERLOAD_WAIT;
       } else {
-DIAG(F("before setPowerMode 1\n"));
         setPowerMode(POWERMODE::OVERLOAD);
-DIAG(F("after  setPowerMode 1\n"));
         unsigned int mA=Hardware::getCurrentMilliamps(isMainTrack,lastCurrent);
-DIAG(F("after  getCurrentMilliamps\n"));
         unsigned int maxmA=Hardware::getCurrentMilliamps(isMainTrack,tripValue);
-DIAG(F("after  getCurrentMilliamps 2\n"));
         DIAG(F("\n*** %S TRACK POWER OVERLOAD current=%d max=%d  offtime=%l ***\n"), isMainTrack ? F("MAIN") : F("PROG"), mA, maxmA, power_sample_overload_wait);
 	power_good_counter=0;
         sampleDelay = power_sample_overload_wait;
@@ -139,15 +132,12 @@ DIAG(F("after  getCurrentMilliamps 2\n"));
       break;
     case POWERMODE::OVERLOAD:
       // Try setting it back on after the OVERLOAD_WAIT
-DIAG(F("before setPowerMode 2\n"));
       setPowerMode(POWERMODE::ON);
-DIAG(F("after  setPowerMode 2\n"));
       sampleDelay = POWER_SAMPLE_ON_WAIT;
       break;
     default:
       sampleDelay = 999; // cant get here..meaningless statement to avoid compiler warning.
   }
-DIAG(F("end of checkPowerOverload()\n"));
 }
 
 
