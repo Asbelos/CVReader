@@ -23,12 +23,16 @@
 #define COMMANDSTATION_DCC_ANALOGREADFAST_H_
 
 #include <Arduino.h>
+#include "DIAG.h"
 
 int inline analogReadFast(uint8_t ADCpin);
 
 #if defined(ARDUINO_ARCH_SAMD) 
 int inline analogReadFast(uint8_t ADCpin)
-{ ADC->CTRLA.bit.ENABLE = 0;              // disable ADC
+{ 
+DIAG(F("starting analogReadFast SAMD\n"));  
+  
+  ADC->CTRLA.bit.ENABLE = 0;              // disable ADC
   while( ADC->STATUS.bit.SYNCBUSY == 1 ); // wait for synchronization
 
   int CTRLBoriginal = ADC->CTRLB.reg;
@@ -42,14 +46,19 @@ int inline analogReadFast(uint8_t ADCpin)
   ADC->SAMPCTRL.reg = 0x00;                      // sampling Time Length = 0
 
   ADC->CTRLA.bit.ENABLE = 1;                     // enable ADC
+//DIAG(F("before while(ADC->STATUS.bit.SYNCBUSY == 1)\n"));  
   while(ADC->STATUS.bit.SYNCBUSY == 1);          // wait for synchronization
+//DIAG(F("after   while(ADC->STATUS.bit.SYNCBUSY == 1)\n"));  
 
+//DIAG(F("before analogRead(ADCpin)\n"));  
   int adc = analogRead(ADCpin); 
+//DIAG(F("after  analogRead(ADCpin)\n"));  
   
   ADC->CTRLB.reg = CTRLBoriginal;
   ADC->AVGCTRL.reg = AVGCTRLoriginal;
   ADC->SAMPCTRL.reg = SAMPCTRLoriginal;
    
+DIAG(F("returning analogReadFast SAMD\n"));  
   return adc;
 }
 
@@ -57,6 +66,7 @@ int inline analogReadFast(uint8_t ADCpin)
 
 int inline analogReadFast(uint8_t ADCpin)
 { 
+DIAG(F("starting analogReadFast SAMC\n"));  
   Adc* ADC;
   if ( (g_APinDescription[ADCpin].ulPeripheralAttribute & PER_ATTR_ADC_MASK) == PER_ATTR_ADC_STD ) {
     ADC = ADC0;
@@ -91,7 +101,10 @@ int inline analogReadFast(uint8_t ADCpin)
 
 #else
 int inline analogReadFast(uint8_t ADCpin) 
-{ byte ADCSRAoriginal = ADCSRA; 
+{ 
+DIAG(F("starting analogReadFast else\n"));  
+  
+  byte ADCSRAoriginal = ADCSRA; 
   ADCSRA = (ADCSRA & B11111000) | 4; 
   int adc = analogRead(ADCpin);  
   ADCSRA = ADCSRAoriginal;

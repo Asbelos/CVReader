@@ -74,6 +74,7 @@ int Hardware::getCurrentRaw(bool isMainTrack) {
   // IMPORTANT:  This function can be called in Interrupt() time within the 56uS timer
   //             The default analogRead takes ~100uS which is catastrphic
   //             so analogReadFast is used here. (-2uS) 
+DIAG(F("before analogReadFast\n")); 
   return analogReadFast(isMainTrack ? MAIN_SENSE_PIN : PROG_SENSE_PIN);
  
 }
