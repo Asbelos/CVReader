@@ -18,6 +18,7 @@
  */
 #ifndef DCC_h
 #define DCC_h
+#include <stdint.h>
 #include <Arduino.h>
 #include "Config.h"
 
@@ -60,8 +61,8 @@ class DCC {
   static void writeCVBitMain(int cab, int cv, byte bNum, bool bValue);
   static void setFunction( int cab, byte fByte, byte eByte);
   static void setFn( int cab, byte functionNumber, bool on);
-  static int  changeFn( int cab, byte functionNumber, bool pressed);
-  static void updateGroupflags(byte & flags, int functionNumber);
+  static int8_t changeFn( int cab, byte functionNumber, bool pressed);
+  static void updateGroupflags(byte & flags, byte functionNumber);
   static void setAccessory(int aAdd, byte aNum, bool activate) ;
   static bool writeTextPacket( byte *b, int nBytes);
   static void setDebug(bool on);
@@ -84,7 +85,7 @@ private:
      int loco;
      byte speedCode;
      byte groupFlags;
-     unsigned long functions;
+     uint32_t functions;
   };
   static byte loopStatus;
   static void setThrottle2( uint16_t cab, uint8_t speedCode);

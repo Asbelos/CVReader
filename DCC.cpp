@@ -103,7 +103,7 @@ void DCC::setFn( int cab, byte functionNumber, bool on) {
 
   // Take care of functions:
   // Set state of function
-  unsigned long funcmask = (1UL<<functionNumber);
+  uint32_t funcmask = (1UL<<functionNumber);
   if (on) {
       speedTable[reg].functions |= funcmask;
   } else {
@@ -116,7 +116,7 @@ void DCC::setFn( int cab, byte functionNumber, bool on) {
 // Change function according to how button was pressed,
 // typically in WiThrottle.
 // Returns new state or -1 if nothing was changed.
-int DCC::changeFn( int cab, byte functionNumber, bool pressed) {
+int8_t DCC::changeFn( int cab, byte functionNumber, bool pressed) {
   int funcstate = -1;
   if (cab<=0 || functionNumber>28) return funcstate;
   int reg = lookupSpeedTable(cab);
@@ -125,7 +125,7 @@ int DCC::changeFn( int cab, byte functionNumber, bool pressed) {
   // Take care of functions:
   // Imitate how many command stations do it: Button press is
   // toggle but for F2 where it is momentary
-  unsigned long funcmask = (1UL<<functionNumber);
+  uint32_t funcmask = (1UL<<functionNumber);
   if (functionNumber == 2) {
       // turn on F2 on press and off again at release of button
       if (pressed) {
@@ -148,7 +148,7 @@ int DCC::changeFn( int cab, byte functionNumber, bool pressed) {
 
 // Set the group flag to say we have touched the particular group.
 // A group will be reminded only if it has been touched.  
-void DCC::updateGroupflags(byte & flags, int functionNumber) {
+void DCC::updateGroupflags(byte & flags, byte functionNumber) {
   byte groupMask;
   if (functionNumber<=4)       groupMask=FN_GROUP_1;
   else if (functionNumber<=8)  groupMask=FN_GROUP_2;
