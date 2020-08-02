@@ -1,5 +1,6 @@
 /*
  *  © 2020, Chris Harlow. All rights reserved.
+ *  © 2020, Harald Barth
  *  
  *  This file is part of Asbelos DCC API
  *
@@ -135,15 +136,22 @@ void WiThrottle::parse(Print & stream, byte * cmdx) {
                 bool newstate=false;
                 Turnout * tt=Turnout::get(id);
                 if (!tt) {
+		  // If turnout does not exist, create it
+		  int addr = ((id - 1) / 4) + 1;
+		  int subaddr = (id - 1) % 4;
+		  Turnout::create(id,addr,subaddr);
+                  StringFormatter::send(stream, F("HMTurnout %d created\n"),id);
+/*
                   StringFormatter::send(stream, F("HMTurnout %d Unknown\n"),id);
                   break;
+*/
                 }
                 switch (cmd[3]) {
                     case 'T': newstate=true; break;
                     case 'C': newstate=false; break;
                     case '2': newstate=!Turnout::isActive(id);                 
                 }
-                tt->activate(newstate);
+		Turnout::activate(id,newstate);
                 StringFormatter::send(stream, F("PTA%c%d\n"),newstate?'4':'2',id );   
             }
             break;
@@ -230,11 +238,15 @@ void WiThrottle::locoAction(Print & stream, byte* aval, char throttleChar, int c
             break;
            case 'F': //F onOff function
                 {
-                  bool onOff=aval[1]=='1';
+		  bool funcstate;
+                  bool pressed=aval[1]=='1';
                   int fKey = getInt(aval+2);
                   LOOPLOCOS(throttleChar, cab) {
-                          DCC::setFn(myLocos[loco].cab, fKey,onOff);
-                   } 
+		      funcstate = DCC::changeFn(myLocos[loco].cab, fKey, pressed);
+		      if(funcstate==0 || funcstate==1)
+			  StringFormatter::send(stream,F("M%cA%c%d<;>F%d%d\n"), throttleChar, LorS(myLocos[loco].cab), 
+						myLocos[loco].cab, funcstate, fKey);
+		  }
                 }
                 break;  
             case 'q':
