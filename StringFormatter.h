@@ -26,6 +26,11 @@
   #define DIAGSERIAL SerialUSB
 #elif defined(ARDUINO_ARCH_AVR)
   #define DIAGSERIAL Serial
+#elif defined(ARDUINO_ARCH_MEGAAVR)
+  #define DIAGSERIAL Serial
+  #define __FlashStringHelper char
+#else
+  #error DID NOT DEFINE SERIAL
 #endif
 
 class StringFormatter
