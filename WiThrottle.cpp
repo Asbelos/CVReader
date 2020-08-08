@@ -66,9 +66,10 @@ WiThrottle::WiThrottle( int wificlientid) {
    nextThrottle=firstThrottle;
    firstThrottle= this;
    clientid=wificlientid;
-    heartBeatEnable=false; // until client turns it on
-    callState=0;
-    for (int loco=0;loco<MAX_MY_LOCO; loco++) myLocos[loco].throttle='\0';
+   heartBeatEnable=false; // until client turns it on
+   initSent=false;
+   turnoutListSent=false;
+   for (int loco=0;loco<MAX_MY_LOCO; loco++) myLocos[loco].throttle='\0';
 }
 
 WiThrottle::~WiThrottle() {
@@ -98,6 +99,19 @@ void WiThrottle::parse(Print & stream, byte * cmdx) {
   
   heartBeat=millis();
   DIAG(F("\nWiThrottle(%d) [%e]"),clientid, cmd);
+
+  //send turnoutlist on next response after the init string
+  if (initSent && !turnoutListSent) {
+    // Send turnout list if populated
+    if (Turnout::firstTurnout) {
+        StringFormatter::send(stream,F("PTL"));
+        for(Turnout *tt=Turnout::firstTurnout;tt!=NULL;tt=tt->nextTurnout){
+            StringFormatter::send(stream,F("]\\[%d}|{T%d}|{%d"), tt->data.id, tt->data.id, (bool)(tt->data.tStatus & STATUS_ACTIVE));
+        }
+        StringFormatter::send(stream,F("\n"));
+    }
+    turnoutListSent = true;
+  }
 
    while (cmd[0]) {
    switch (cmd[0]) {
@@ -145,15 +159,8 @@ void WiThrottle::parse(Print & stream, byte * cmdx) {
               StringFormatter::send(stream,F("VN2.0\nHTDCC++EX\nRL0\nPPA%x\n"),DCCWaveform::mainTrack.getPowerMode()==POWERMODE::ON);
               if (annotateLeftRight) StringFormatter::send(stream,F("PTT]\\[Turnouts}|{Turnout]\\[Left}|{2]\\[Right}|{4\n"));
               else                   StringFormatter::send(stream,F("PTT]\\[Turnouts}|{Turnout]\\[Closed}|{2]\\[Thrown}|{4\n"));
-              // Send turnout list if populated
-              if (Turnout::firstTurnout) {
-                  StringFormatter::send(stream,F("PTL"));
-                  for(Turnout *tt=Turnout::firstTurnout;tt!=NULL;tt=tt->nextTurnout){
-                      StringFormatter::send(stream,F("]\\[%d}|{T%d}|{%d"), tt->data.id, tt->data.id, (bool)(tt->data.tStatus & STATUS_ACTIVE));
-                  }
-                  StringFormatter::send(stream,F("\n"));
-              }
               StringFormatter::send(stream,F("*%d\n"),HEARTBEAT_TIMEOUT);
+              initSent = true;
             }
             break;           
       case 'Q': // 
