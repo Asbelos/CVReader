@@ -17,7 +17,7 @@
  *  along with CommandStation.  If not, see <https://www.gnu.org/licenses/>.
  */
 #ifndef WiThrottle_h
-#define WiTHrottle_h
+#define WiThrottle_h
 
 
 struct MYLOCO {
@@ -35,8 +35,8 @@ class WiThrottle {
     WiThrottle( int wifiClientId);
     ~WiThrottle();
    
-      static const int MAX_MY_LOCO=10;
-      static const int HEARTBEAT_TIMEOUT=10;// Timeout after 10 seconds, heartbeat at 5
+      static const int MAX_MY_LOCO=10; //maximum number of locos assigned to a single client
+      static const int HEARTBEAT_TIMEOUT=4;// heartbeat at 4secs to provide messaging transport
       static WiThrottle* firstThrottle;
       static int getInt(byte * cmd);
       static int getLocoId(byte * cmd);

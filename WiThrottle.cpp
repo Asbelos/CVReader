@@ -98,7 +98,7 @@ void WiThrottle::parse(Print & stream, byte * cmdx) {
   byte * cmd=local;
   
   heartBeat=millis();
-  DIAG(F("\nWiThrottle(%d) [%e]"),clientid, cmd);
+//  DIAG(F("\nWiThrottle(%d)<-[%e]\n"),clientid, cmd);
 
   //send turnoutlist on next response after the init string
   if (initSent && !turnoutListSent) {
@@ -164,7 +164,7 @@ void WiThrottle::parse(Print & stream, byte * cmdx) {
             }
             break;           
       case 'Q': // 
-            DIAG(F("\nWiThrottle Quit"));
+            DIAG(F("WiThrottle Quit\n"));
             delete this; 
             break;           
    }
@@ -194,19 +194,23 @@ void WiThrottle::multithrottle(Print & stream, byte * cmd){
           while(*aval !=';' && *aval !='\0') aval++;
           if (*aval) aval+=2;  // skip ;>
 
-       DIAG(F("\nMultithrottle aval=%c cab=%d"), aval[0],locoid);    
+//       DIAG(F("\nMultithrottle aval=%c cab=%d"), aval[0],locoid);    
        switch(cmd[2]) {
           case '+':  // add loco
                for (int loco=0;loco<MAX_MY_LOCO;loco++) {
-                  if (myLocos[loco].throttle=='\0') {
+                  if (cmd[3] != LorS(locoid)) { //insure L or S from request matches our assumptions
+                    StringFormatter::send(stream, F("HMLength '%c' not valid for %d\n"), cmd[3] ,locoid);                    
+                    return;
+                  }
+                  if (myLocos[loco].throttle=='\0') { //find an empty "slot" on this client's list
                     myLocos[loco].throttle=throttleChar;
                     myLocos[loco].cab=locoid;
                     StringFormatter::send(stream, F("M%c+%c%d<;>\n"), throttleChar, cmd[3] ,locoid);
                     // TODO... get known Fn states from DCC (need memoryStream improvements to handle data length)
                     // for(fKey=0; fKey<29; fKey++)StringFormatter::send(stream,F("M%cA%c<;>F0&s\n"),throttleChar,cmd[3],fkey);
-                    StringFormatter::send(stream, F("M%c+%c%d<;>V0\n"), throttleChar, cmd[3], locoid);
-                    StringFormatter::send(stream, F("M%c+%c%d<;>R1\n"), throttleChar, cmd[3], locoid);
-                    StringFormatter::send(stream, F("M%c+%c%d<;>s1\n"), throttleChar, cmd[3], locoid);
+                    StringFormatter::send(stream, F("M%cA%c%d<;>V0\n"), throttleChar, cmd[3], locoid); //default speed 0
+                    StringFormatter::send(stream, F("M%cA%c%d<;>R1\n"), throttleChar, cmd[3], locoid); //default forward
+                    StringFormatter::send(stream, F("M%cA%c%d<;>s1\n"), throttleChar, cmd[3], locoid); //default speed step 128
                     break;
                   }
                }
@@ -215,7 +219,7 @@ void WiThrottle::multithrottle(Print & stream, byte * cmd){
                  LOOPLOCOS(throttleChar, locoid) {
                      myLocos[loco].throttle='\0';
                      DCC::setThrottle(myLocos[loco].cab,0,0);
-                     StringFormatter::send(stream, F("M%c-<;>\n"), throttleChar);
+                     StringFormatter::send(stream, F("M%c-%c%d<;>\n"), throttleChar, LorS(myLocos[loco].cab), myLocos[loco].cab);
                   }
             
             break;
@@ -226,7 +230,7 @@ void WiThrottle::multithrottle(Print & stream, byte * cmd){
 
 void WiThrottle::locoAction(Print & stream, byte* aval, char throttleChar, int cab){
     // Note cab=-1 for all cabs in the consist called throttleChar.  
-    DIAG(F("\nLoco Action aval=%c%c throttleChar=%c, cab=%d"), aval[0],aval[1],throttleChar, cab);
+//    DIAG(F("\nLoco Action aval=%c%c throttleChar=%c, cab=%d"), aval[0],aval[1],throttleChar, cab);
      switch (aval[0]) {
            case 'V':  // Vspeed
              { 
@@ -275,8 +279,8 @@ void WiThrottle::locoAction(Print & stream, byte* aval, char throttleChar, int c
                 DCC::setThrottle(myLocos[loco].cab,1, DCC::getThrottleDirection(myLocos[loco].cab));
                 }
                break;
-            case 'I': // Idle
-            case 'Q': // Quit
+            case 'I': // Idle, set speed to 0
+            case 'Q': // Quit, set speed to 0
               LOOPLOCOS(throttleChar, cab) {
                 DCC::setThrottle(myLocos[loco].cab,0, DCC::getThrottleDirection(myLocos[loco].cab));
                 }
