@@ -196,15 +196,28 @@ void WiThrottle::multithrottle(Print & stream, byte * cmd){
 
 //       DIAG(F("\nMultithrottle aval=%c cab=%d"), aval[0],locoid);    
        switch(cmd[2]) {
-          case '+':  // add loco
+          case '+':  // add loco request
+                //return error if address zero requested
+                if (locoid==0) { 
+                  StringFormatter::send(stream, F("HMAddress '0' not supported!\n"), cmd[3] ,locoid);                    
+                  return;
+                }
+                //return error if L or S from request doesn't match DCC++ assumptions
+                if (cmd[3] != LorS(locoid)) { 
+                  StringFormatter::send(stream, F("HMLength '%c' not valid for %d!\n"), cmd[3] ,locoid);                    
+                  return;
+                }
+                //return error if address is already in use
+                if (DCC::isThrottleInUse(locoid)) { 
+                  StringFormatter::send(stream, F("HMAddress '%d' in use!\n"), locoid);                    
+                  return;
+                }
                for (int loco=0;loco<MAX_MY_LOCO;loco++) {
-                  if (cmd[3] != LorS(locoid)) { //insure L or S from request matches our assumptions
-                    StringFormatter::send(stream, F("HMLength '%c' not valid for %d\n"), cmd[3] ,locoid);                    
-                    return;
-                  }
-                  if (myLocos[loco].throttle=='\0') { //find an empty "slot" on this client's list
+                  //use first empty "slot" on this client's list, and add to registration list
+                  if (myLocos[loco].throttle=='\0') { 
                     myLocos[loco].throttle=throttleChar;
                     myLocos[loco].cab=locoid;
+                    DCC::setThrottle(locoid,0,0); //register this loco address
                     StringFormatter::send(stream, F("M%c+%c%d<;>\n"), throttleChar, cmd[3] ,locoid);
                     // TODO... get known Fn states from DCC (need memoryStream improvements to handle data length)
                     // for(fKey=0; fKey<29; fKey++)StringFormatter::send(stream,F("M%cA%c<;>F0&s\n"),throttleChar,cmd[3],fkey);
@@ -219,6 +232,7 @@ void WiThrottle::multithrottle(Print & stream, byte * cmd){
                  LOOPLOCOS(throttleChar, locoid) {
                      myLocos[loco].throttle='\0';
                      DCC::setThrottle(myLocos[loco].cab,0,0);
+                     DCC::forgetLoco(myLocos[loco].cab); //unregister this loco address
                      StringFormatter::send(stream, F("M%c-%c%d<;>\n"), throttleChar, LorS(myLocos[loco].cab), myLocos[loco].cab);
                   }
             
