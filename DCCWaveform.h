@@ -67,8 +67,9 @@ class DCCWaveform {
   private:
 
     static void interruptHandler();
-    bool interrupt1();
+    byte interrupt1();
     void interrupt2();
+    void interruptDiag();
     void checkAck();
     void setSignal(bool high);
     

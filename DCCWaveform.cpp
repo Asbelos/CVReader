@@ -44,15 +44,21 @@ void DCCWaveform::loop() {
 // static //
 void DCCWaveform::interruptHandler() {
   // call the timer edge sensitive actions for progtrack and maintrack
-  bool mainCall2 = mainTrack.interrupt1();
-  bool progCall2 = progTrack.interrupt1();
+  byte mainCall2 = mainTrack.interrupt1();
+  byte progCall2 = progTrack.interrupt1();
+
+  if (progTrackSyncMain) {
+      if (mainCall2 == 2) mainTrack.interruptDiag();
+  } else {
+      if (progCall2 == 2) progTrack.interruptDiag();
+  }
 
   // call (if necessary) the procs to get the current bits
   // these must complete within 50microsecs of the interrupt
   // but they are only called ONCE PER BIT TRANSMITTED
   // after the rising edge of the signal
-  if (mainCall2) mainTrack.interrupt2();
-  if (progCall2) progTrack.interrupt2();
+  if (mainCall2 == 1) mainTrack.interrupt2();
+  if (progCall2 == 1) progTrack.interrupt2();
 }
 
 
@@ -146,19 +152,24 @@ void DCCWaveform::checkPowerOverload() {
 
 // process time-edge sensitive part of interrupt
 // return true if second level required
-bool DCCWaveform::interrupt1() {
+// returns 1 if interrupt2() should be done after
+// returns 2 if interruptDiag() should be done after
+// returns 0 if nothing special should be done after
+byte DCCWaveform::interrupt1() {
   // NOTE: this must consume transmission buffers even if the power is off
   // otherwise can cause hangs in main loop waiting for the pendingBuffer.
+  int ret = 0;
   switch (state) {
     case 0:  // start of bit transmission
       setSignal(HIGH);
       state = 1;
-      return true; // must call interrupt2 to set currentBit
+      return 1; // must call interrupt2 to set currentBit
 
     case 1:  // 58us after case 0
       if (currentBit) {
         setSignal(LOW);
         state = 0;
+	ret = 2;
       }
       else state = 2;
       break;
@@ -175,7 +186,7 @@ bool DCCWaveform::interrupt1() {
   // this is not case(0) which needs  relatively expensive packet change code to be called.
   if (ackPending) checkAck();
 
-  return false;
+  return ret;
 
 }
 
@@ -193,17 +204,6 @@ void DCCWaveform::interrupt2() {
   // set currentBit to be the next bit to be sent.
 
   if (remainingPreambles > 0 ) {
-    if (progTrackSyncMain ? isMainTrack : !isMainTrack) {
-      // When the prog and main tracks are running independent,
-      // then the diag pin monitors the prog track.
-      // When the prog and main tracks are running in sync,
-      // then the diag pin monitors the main track.
-      // In that way we can monitor both signals.
-      if (remainingPreambles == 2)
-        Hardware::diagPin(HIGH);
-      else if (remainingPreambles == 1)
-	Hardware::diagPin(LOW);
-    }   
     currentBit = true;
     remainingPreambles--;
     return;
@@ -247,6 +247,14 @@ void DCCWaveform::interrupt2() {
   }  
 }
 
+void DCCWaveform::interruptDiag() {
+  // set and clear diag pin
+
+  if (remainingPreambles == 1)                        // second half of penultimate preamble bit
+    Hardware::diagPin(LOW);
+  else if (remainingPreambles == requiredPreambles-1) // second half of first preamble bit
+    Hardware::diagPin(HIGH);
+}
 
 
 // Wait until there is no packet pending, then make this pending
