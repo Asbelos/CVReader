@@ -27,6 +27,8 @@ const byte PROG_SENSE_PIN = A1;
 const byte PROG_BRAKE_PIN = 8;
 const byte PROG_FAULT_PIN = UNUSED_PIN;
 
+const byte DIAG_PIN = 4;
+
 const int   PROG_MAX_MILLIAMPS=250;
 const float PROG_SENSE_FACTOR=2.99; //  analgRead(PROG_SENSE_PIN) * PROG_SENSE_FACTOR = milliamps 
 

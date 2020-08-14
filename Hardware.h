@@ -30,6 +30,7 @@ class Hardware {
     static void setBrake(bool isMainTrack, bool on);
     static void setCallback(int duration,  void (*isr)());
     static void pinWrite(int pin, bool high); // gets better perf and less code than arduino digitalWrite
+    static void diagPin(bool state);
 //    static void setSingleCallback(int duration,  void (*isr)());
 //    static void resetSingleCallback(int duration);
 };

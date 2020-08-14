@@ -48,6 +48,8 @@ void Hardware::init() {
   if (PROG_SIGNAL_PIN_ALT != UNUSED_PIN) pinMode(PROG_SIGNAL_PIN_ALT, OUTPUT);
   pinMode(PROG_SENSE_PIN, INPUT);
   if (PROG_FAULT_PIN != UNUSED_PIN) pinMode(PROG_FAULT_PIN, INPUT);
+
+  if (DIAG_PIN != UNUSED_PIN) pinMode(DIAG_PIN, OUTPUT);
 }
 
 void Hardware::setPower(bool isMainTrack, bool on) {
@@ -78,6 +80,10 @@ void Hardware::setSyncSignal(bool high) {
   WritePin(PROG_SIGNAL_PIN, high ? HIGH : LOW);
   if (MAIN_SIGNAL_PIN_ALT != UNUSED_PIN) WritePin(MAIN_SIGNAL_PIN_ALT, high ? LOW : HIGH);
   if (PROG_SIGNAL_PIN_ALT != UNUSED_PIN) WritePin(PROG_SIGNAL_PIN_ALT, high ? LOW : HIGH);
+}
+
+void Hardware::diagPin(bool state) {
+    if(DIAG_PIN != UNUSED_PIN) WritePin(DIAG_PIN,state);
 }
 
 int Hardware::getCurrentRaw(bool isMainTrack) {

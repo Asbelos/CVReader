@@ -193,6 +193,17 @@ void DCCWaveform::interrupt2() {
   // set currentBit to be the next bit to be sent.
 
   if (remainingPreambles > 0 ) {
+    if (progTrackSyncMain ? isMainTrack : !isMainTrack) {
+      // When the prog and main tracks are running independent,
+      // then the diag pin monitors the prog track.
+      // When the prog and main tracks are running in sync,
+      // then the diag pin monitors the main track.
+      // In that way we can monitor both signals.
+      if (remainingPreambles == 2)
+        Hardware::diagPin(HIGH);
+      else if (remainingPreambles == 1)
+	Hardware::diagPin(LOW);
+    }   
     currentBit = true;
     remainingPreambles--;
     return;
