@@ -160,7 +160,7 @@ void DCCWaveform::checkPowerOverload() {
 byte DCCWaveform::interrupt1() {
   // NOTE: this must consume transmission buffers even if the power is off
   // otherwise can cause hangs in main loop waiting for the pendingBuffer.
-  int ret;
+  int ret = 0;
   switch (state) {
     case 0:               // start of bit transmission
       setSignal(HIGH);
