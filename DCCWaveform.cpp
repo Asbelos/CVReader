@@ -48,17 +48,18 @@ void DCCWaveform::interruptHandler() {
   byte progCall2 = progTrack.interrupt1();
 
   if (progTrackSyncMain) {
-      if (mainCall2 == 2) mainTrack.interruptDiag();
+      if (mainCall2 & 2) mainTrack.interruptDiag();
   } else {
-      if (progCall2 == 2) progTrack.interruptDiag();
+      if (progCall2 & 2) progTrack.interruptDiag();
+      if (progCall2 & 4) progTrack.checkAck();
   }
 
   // call (if necessary) the procs to get the current bits
   // these must complete within 50microsecs of the interrupt
   // but they are only called ONCE PER BIT TRANSMITTED
   // after the rising edge of the signal
-  if (mainCall2 == 1) mainTrack.interrupt2();
-  if (progCall2 == 1) progTrack.interrupt2();
+  if (mainCall2 & 1) mainTrack.interrupt2();
+  if (progCall2 & 1) progTrack.interrupt2();
 }
 
 
@@ -151,40 +152,48 @@ void DCCWaveform::checkPowerOverload() {
 
 
 // process time-edge sensitive part of interrupt
-// return true if second level required
-// returns 1 if interrupt2() should be done after
-// returns 2 if interruptDiag() should be done after
+// returs a flag byte
+// bit 0 is set if interrupt2() should be done after
+// bit 1 is set if interruptDiag() should be done after
+// bit 2 is set if checkAck() should be done after
 // returns 0 if nothing special should be done after
 byte DCCWaveform::interrupt1() {
   // NOTE: this must consume transmission buffers even if the power is off
   // otherwise can cause hangs in main loop waiting for the pendingBuffer.
-  int ret = 0;
+  int ret;
   switch (state) {
-    case 0:  // start of bit transmission
+    case 0:               // start of bit transmission
       setSignal(HIGH);
       state = 1;
-      return 1; // must call interrupt2 to set currentBit
-
-    case 1:  // 58us after case 0
+      ret = 1;            // must call interrupt2 to set currentBit
+      break;
+    case 1:               // 58us after case 0
       if (currentBit) {
         setSignal(LOW);
         state = 0;
-	ret = 2;
+	ret = 2;          // must call interruptDiag
+      } else {
+	setSignal(HIGH);  // because of timing (we are already HIGH)
+	state = 2;
+	ret = 0;
       }
-      else state = 2;
       break;
-    case 2:  // 116us after case 0
+    case 2:              // 116us after case 0
       setSignal(LOW);
       state = 3;
+      ret = 0;
       break;
-    case 3:  // finished sending zero bit
+    case 3:              // finished sending zero bit
+      setSignal(LOW);    // because of timimg (we are already LOW)
       state = 0;
+      ret = 0;
       break;
   }
 
   // ACK check is prog track only and will only be checked if 
   // this is not case(0) which needs  relatively expensive packet change code to be called.
-  if (ackPending) checkAck();
+  if (ackPending && ret != 1)
+      ret |= 4;  // must call ackPending as well
 
   return ret;
 
@@ -250,10 +259,12 @@ void DCCWaveform::interrupt2() {
 void DCCWaveform::interruptDiag() {
   // set and clear diag pin
 
-  if (remainingPreambles == 1)                        // second half of penultimate preamble bit
-    Hardware::diagPin(LOW);
-  else if (remainingPreambles == requiredPreambles-1) // second half of first preamble bit
-    Hardware::diagPin(HIGH);
+    if (remainingPreambles == 2) {
+      Hardware::diagPin(HIGH);
+      return;
+    }
+    if (remainingPreambles == 1)
+	Hardware::diagPin(LOW);
 }
 
 
