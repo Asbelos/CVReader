@@ -71,10 +71,6 @@ bool WiThrottle::areYouUsingThrottle(int cab) {
   }
   return false;
 }
-void WiThrottle::setSendPowerState() {
-  for (WiThrottle* wt=firstThrottle; wt!=NULL ; wt=wt->nextThrottle)  
-     wt->sendPowerState = true;
-}
 void WiThrottle::setSendTurnoutList() {
   for (WiThrottle* wt=firstThrottle; wt!=NULL ; wt=wt->nextThrottle)  
      wt->sendTurnoutList = true;
@@ -87,9 +83,9 @@ WiThrottle::WiThrottle( int wificlientid) {
    nextThrottle=firstThrottle;
    firstThrottle= this;
    clientid=wificlientid;
+   initSent=false; // prevent sending heartbeats before connection completed
    heartBeatEnable=false; // until client turns it on
    sendTurnoutList=false; // indicates turnout list needs to be sent to this client
-   sendPowerState =false; // indicates power state  needs to be sent to this client
    for (int loco=0;loco<MAX_MY_LOCO; loco++) myLocos[loco].throttle='\0';
 }
 
@@ -131,10 +127,11 @@ void WiThrottle::parse(Print & stream, byte * cmdx) {
     sendTurnoutList = false;
   }
 
-  // Send power state when requested
-  if (sendPowerState) {
-    StringFormatter::send(stream,F("PPA%x\n"),DCCWaveform::mainTrack.getPowerMode()==POWERMODE::ON);
-    sendPowerState = false;  
+  // Send power state if different than last sent
+  bool currentPowerState = (DCCWaveform::mainTrack.getPowerMode()==POWERMODE::ON);
+  if (lastPowerState != currentPowerState) {
+    StringFormatter::send(stream,F("PPA%x\n"),currentPowerState);
+    lastPowerState = currentPowerState;  
   }
 
    while (cmd[0]) {
@@ -147,7 +144,7 @@ void WiThrottle::parse(Print & stream, byte * cmdx) {
             if (cmd[1]=='P' && cmd[2]=='A' )  {  //PPA power mode 
               DCCWaveform::mainTrack.setPowerMode(cmd[3]=='1'?POWERMODE::ON:POWERMODE::OFF);
               StringFormatter::send(stream,F("PPA%x\n"),DCCWaveform::mainTrack.getPowerMode()==POWERMODE::ON);
-              setSendPowerState(); //tell all WiThrottle instances to send power state at next heartbeat
+              lastPowerState = (DCCWaveform::mainTrack.getPowerMode()==POWERMODE::ON); //remember power state sent for comparison later
             }
             else if (cmd[1]=='T' && cmd[2]=='A') { // PTA accessory toggle 
                 int id=getInt(cmd+4); 
@@ -171,7 +168,9 @@ void WiThrottle::parse(Print & stream, byte * cmdx) {
             }
             break;
        case 'N':  // Heartbeat (2)
-            StringFormatter::send(stream, F("*%d\n"),HEARTBEAT_TIMEOUT); // return timeout value
+            if (initSent) {
+              StringFormatter::send(stream, F("*%d\n"),HEARTBEAT_TIMEOUT); // return timeout value
+            }
             break;
        case 'M': // multithrottle
             multithrottle(stream, cmd); 
@@ -183,6 +182,7 @@ void WiThrottle::parse(Print & stream, byte * cmdx) {
               else                   StringFormatter::send(stream,F("PTT]\\[Turnouts}|{Turnout]\\[Closed}|{2]\\[Thrown}|{4\n"));
               StringFormatter::send(stream,F("*%d\n"),HEARTBEAT_TIMEOUT);
               sendTurnoutList = true; // send turnout list on next reply (avoid msg length overflow)
+              initSent = true;
             }
             break;           
       case 'Q': // 

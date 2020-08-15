@@ -43,7 +43,6 @@ class WiThrottle {
       static char LorS(int cab); 
       static bool isThrottleInUse(int cab);
       static void setSendTurnoutList();
-      static void setSendPowerState();
       bool areYouUsingThrottle(int cab);
       WiThrottle* nextThrottle;
       int clientid;
@@ -51,8 +50,9 @@ class WiThrottle {
       MYLOCO myLocos[MAX_MY_LOCO];   
       bool heartBeatEnable;
       unsigned long heartBeat;
+      bool initSent; // valid connection established
       bool sendTurnoutList; // this client needs to send turnout list on next reply      
-      bool sendPowerState;  // this client needs to send power state on next reply
+      bool lastPowerState;  // last power state sent to this client
       void multithrottle(Print & stream, byte * cmd);
       void locoAction(Print & stream, byte* aval, char throttleChar, int cab);
       void accessory(Print & stream, byte* cmd);
