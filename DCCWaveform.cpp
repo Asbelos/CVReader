@@ -1,5 +1,6 @@
 /*
  *  © 2020, Chris Harlow. All rights reserved.
+ *  © 2020, Harald Barth. All rights reserved.
  *  
  *  This file is part of Asbelos DCC API
  *
@@ -151,8 +152,19 @@ void DCCWaveform::checkPowerOverload() {
 
 
 
-// process time-edge sensitive part of interrupt
+// Process time-edge sensitive part of interrupt
 // returs a flag byte
+//
+// This routine should run at as constant time
+// as possible, even at expense of some total
+// processing time. That is the reason for the
+// inserted "redundant" calls to setSignal()
+// as indicated below.
+//
+// This is so that the second call (for the prog track)
+// is a constant time after the timer interrupt, providing 
+// a cleaner signal.
+//
 // bit 0 is set if interrupt2() should be done after
 // bit 1 is set if interruptDiag() should be done after
 // bit 2 is set if checkAck() should be done after
