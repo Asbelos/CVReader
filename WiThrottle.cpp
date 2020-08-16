@@ -71,11 +71,6 @@ bool WiThrottle::areYouUsingThrottle(int cab) {
   }
   return false;
 }
-void WiThrottle::setSendTurnoutList() {
-  for (WiThrottle* wt=firstThrottle; wt!=NULL ; wt=wt->nextThrottle)  
-     wt->sendTurnoutList = true;
-}
-
  // One instance of WiThrottle per connected client, so we know what the locos are 
  
 WiThrottle::WiThrottle( int wificlientid) {
@@ -85,7 +80,7 @@ WiThrottle::WiThrottle( int wificlientid) {
    clientid=wificlientid;
    initSent=false; // prevent sending heartbeats before connection completed
    heartBeatEnable=false; // until client turns it on
-   sendTurnoutList=false; // indicates turnout list needs to be sent to this client
+   turnoutListHash = -1;  // make sure turnout list is sent once
    for (int loco=0;loco<MAX_MY_LOCO; loco++) myLocos[loco].throttle='\0';
 }
 
@@ -117,21 +112,22 @@ void WiThrottle::parse(Print & stream, byte * cmdx) {
   heartBeat=millis();
   //  DIAG(F("\nWiThrottle(%d)<-[%e]\n"),clientid, cmd);
 
-  // Send turnout list when requested (will replace list on client)
-  if (sendTurnoutList) {
-    StringFormatter::send(stream,F("PTL"));
-    for(Turnout *tt=Turnout::firstTurnout;tt!=NULL;tt=tt->nextTurnout){
-        StringFormatter::send(stream,F("]\\[%d}|{%d}|{%c"), tt->data.id, tt->data.id, Turnout::isActive(tt->data.id)?'4':'2');
+  if (initSent) {
+    // Send power state if different than last sent
+    bool currentPowerState = (DCCWaveform::mainTrack.getPowerMode()==POWERMODE::ON);
+    if (lastPowerState != currentPowerState) {
+      StringFormatter::send(stream,F("PPA%x\n"),currentPowerState);
+      lastPowerState = currentPowerState;  
     }
-    StringFormatter::send(stream,F("\n"));
-    sendTurnoutList = false;
-  }
-
-  // Send power state if different than last sent
-  bool currentPowerState = (DCCWaveform::mainTrack.getPowerMode()==POWERMODE::ON);
-  if (lastPowerState != currentPowerState) {
-    StringFormatter::send(stream,F("PPA%x\n"),currentPowerState);
-    lastPowerState = currentPowerState;  
+    // Send turnout list if changed since last sent (will replace list on client)
+    if (turnoutListHash != Turnout::turnoutlistHash) {
+      StringFormatter::send(stream,F("PTL"));
+      for(Turnout *tt=Turnout::firstTurnout;tt!=NULL;tt=tt->nextTurnout){
+          StringFormatter::send(stream,F("]\\[%d}|{%d}|{%c"), tt->data.id, tt->data.id, Turnout::isActive(tt->data.id)?'4':'2');
+      }
+      StringFormatter::send(stream,F("\n"));
+      turnoutListHash = Turnout::turnoutlistHash; // keep a copy of hash for later comparison
+    }
   }
 
    while (cmd[0]) {
@@ -155,7 +151,7 @@ void WiThrottle::parse(Print & stream, byte * cmdx) {
                   int addr = ((id - 1) / 4) + 1;
                   int subaddr = (id - 1) % 4;
                   Turnout::create(id,addr,subaddr);
-                  StringFormatter::send(stream, F("HMTurnout %d created\n"),id);
+                  StringFormatter::send(stream, F("HmTurnout %d created\n"),id);
                 }
                 switch (cmd[3]) {
                     case 'T': newstate=true; break;
@@ -164,11 +160,10 @@ void WiThrottle::parse(Print & stream, byte * cmdx) {
                 }
 		            Turnout::activate(id,newstate);
                 StringFormatter::send(stream, F("PTA%c%d\n"),newstate?'4':'2',id );   
-                setSendTurnoutList(); //tell all WiThrottle instances to send turnout list at next heartbeat
             }
             break;
-       case 'N':  // Heartbeat (2)
-            if (initSent) {
+       case 'N':  // Heartbeat (2), only send if connection completed by 'HU' message
+            if (initSent) { 
               StringFormatter::send(stream, F("*%d\n"),HEARTBEAT_TIMEOUT); // return timeout value
             }
             break;
@@ -177,11 +172,12 @@ void WiThrottle::parse(Print & stream, byte * cmdx) {
             break;
        case 'H': // send initial connection info after receiving "HU" message
             if (cmd[1] == 'U') {
-              StringFormatter::send(stream,F("VN2.0\nHTDCC++EX\nRL0\nPPA%x\n"),DCCWaveform::mainTrack.getPowerMode()==POWERMODE::ON);
+              StringFormatter::send(stream,F("VN2.0\nHTDCC++EX\nRL0\n"));
               if (annotateLeftRight) StringFormatter::send(stream,F("PTT]\\[Turnouts}|{Turnout]\\[Left}|{2]\\[Right}|{4\n"));
               else                   StringFormatter::send(stream,F("PTT]\\[Turnouts}|{Turnout]\\[Closed}|{2]\\[Thrown}|{4\n"));
+              StringFormatter::send(stream,F("PPA%x\n"),DCCWaveform::mainTrack.getPowerMode()==POWERMODE::ON);
+              lastPowerState = (DCCWaveform::mainTrack.getPowerMode()==POWERMODE::ON); //remember power state sent for comparison later
               StringFormatter::send(stream,F("*%d\n"),HEARTBEAT_TIMEOUT);
-              sendTurnoutList = true; // send turnout list on next reply (avoid msg length overflow)
               initSent = true;
             }
             break;           

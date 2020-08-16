@@ -51,7 +51,7 @@ class WiThrottle {
       bool heartBeatEnable;
       unsigned long heartBeat;
       bool initSent; // valid connection established
-      bool sendTurnoutList; // this client needs to send turnout list on next reply      
+      int turnoutListHash;  // used to check for changes to turnout list
       bool lastPowerState;  // last power state sent to this client
       void multithrottle(Print & stream, byte * cmd);
       void locoAction(Print & stream, byte* aval, char throttleChar, int cab);
