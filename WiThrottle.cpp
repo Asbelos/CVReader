@@ -326,12 +326,12 @@ void WiThrottle::loop() {
 }
 
 void WiThrottle::checkHeartbeat() {
-  // if 2 heartbeats missed... eSTOP all locos for this client
+  // if 2 heartbeats missed... drop connection and eStop any locos still assigned to this client
   if(heartBeatEnable && (millis()-heartBeat > HEARTBEAT_TIMEOUT*2000)) {
-    DIAG(F("WiThrottle(%d) hearbeat missed, dropping connection"),clientid);
-    LOOPLOCOS('*', -1) { //stop and drop all locos still assigned to this WiThrottle
+    DIAG(F("WiThrottle(%d) hearbeat missed, dropping connection\n"),clientid);
+    LOOPLOCOS('*', -1) { 
       if (myLocos[loco].throttle!='\0') {
-        DIAG(F("  dropping cab %c"),clientid, myLocos[loco].cab);
+        DIAG(F("  eStopping cab %d\n"), myLocos[loco].cab);
         DCC::setThrottle(myLocos[loco].cab, 1, DCC::getThrottleDirection(myLocos[loco].cab)); //eStop
       }
     }

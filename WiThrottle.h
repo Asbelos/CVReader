@@ -21,8 +21,8 @@
 
 
 struct MYLOCO {
-    char throttle;
-    int cab;
+    char throttle; //indicates which throttle letter on client, often '0','1' or '2'
+    int cab; //address of this loco
 };
 
 class WiThrottle {
