@@ -230,7 +230,7 @@ void WiThrottle::multithrottle(Print & stream, byte * cmd){
                   StringFormatter::send(stream, F("HMLength '%c' not valid for %d!\n"), cmd[3] ,locoid);                    
                   return;
                 }
-                //use first empty "slot" on this client's list, and add to registration list
+                //use first empty "slot" on this client's list, will be added to DCC registration list
                 for (int loco=0;loco<MAX_MY_LOCO;loco++) {
                   if (myLocos[loco].throttle=='\0') { 
                     myLocos[loco].throttle=throttleChar;
@@ -238,8 +238,8 @@ void WiThrottle::multithrottle(Print & stream, byte * cmd){
                     StringFormatter::send(stream, F("M%c+%c%d<;>\n"), throttleChar, cmd[3] ,locoid); //tell client to add loco
                     // TODO... get known Fn states from DCC (need memoryStream improvements to handle data length)
                     // for(fKey=0; fKey<29; fKey++)StringFormatter::send(stream,F("M%cA%c<;>F0&s\n"),throttleChar,cmd[3],fkey);
-                    StringFormatter::send(stream, F("M%cA%c%d<;>V%d\n"), throttleChar, cmd[3], locoid, DCC::getThrottleSpeed(myLocos[loco].cab));
-                    StringFormatter::send(stream, F("M%cA%c%d<;>R%d\n"), throttleChar, cmd[3], locoid, DCC::getThrottleDirection(myLocos[loco].cab));
+                    StringFormatter::send(stream, F("M%cA%c%d<;>V%d\n"), throttleChar, cmd[3], locoid, DCCToWiTSpeed(DCC::getThrottleSpeed(locoid)));
+                    StringFormatter::send(stream, F("M%cA%c%d<;>R%d\n"), throttleChar, cmd[3], locoid, DCC::getThrottleDirection(locoid));
                     StringFormatter::send(stream, F("M%cA%c%d<;>s1\n"), throttleChar, cmd[3], locoid); //default speed step 128
                     break;
                   }
@@ -263,10 +263,10 @@ void WiThrottle::locoAction(Print & stream, byte* aval, char throttleChar, int c
      switch (aval[0]) {
            case 'V':  // Vspeed
              { 
-              byte locospeed=getInt(aval+1);
+              byte locospeed=WiTToDCCSpeed(getInt(aval+1));
               LOOPLOCOS(throttleChar, cab) {
-                DCC::setThrottle(myLocos[loco].cab,locospeed, DCC::getThrottleDirection(myLocos[loco].cab));
-                StringFormatter::send(stream,F("M%cA%c%d<;>V%d\n"), throttleChar, LorS(myLocos[loco].cab), myLocos[loco].cab, DCC::getThrottleSpeed(myLocos[loco].cab));
+                DCC::setThrottle(myLocos[loco].cab, locospeed, DCC::getThrottleDirection(myLocos[loco].cab));
+                StringFormatter::send(stream,F("M%cA%c%d<;>V%d\n"), throttleChar, LorS(myLocos[loco].cab), myLocos[loco].cab, locospeed);
                 }
              } 
             break;
@@ -286,7 +286,7 @@ void WiThrottle::locoAction(Print & stream, byte* aval, char throttleChar, int c
             case 'q':
                 if (aval[1]=='V') {   //qV
                   LOOPLOCOS(throttleChar, cab) {              
-                    StringFormatter::send(stream,F("M%cA%c%d<;>V%d\n"), throttleChar, LorS(myLocos[loco].cab), myLocos[loco].cab, DCC::getThrottleSpeed(myLocos[loco].cab));
+                    StringFormatter::send(stream,F("M%cA%c%d<;>V%d\n"), throttleChar, LorS(myLocos[loco].cab), myLocos[loco].cab, DCCToWiTSpeed(DCC::getThrottleSpeed(myLocos[loco].cab)));
                   }              
                 }
                 else if (aval[1]=='R') { // qR
@@ -300,23 +300,39 @@ void WiThrottle::locoAction(Print & stream, byte* aval, char throttleChar, int c
               bool forward=aval[1]!='0';
               LOOPLOCOS(throttleChar, cab) {              
                 DCC::setThrottle(myLocos[loco].cab, DCC::getThrottleSpeed(myLocos[loco].cab), forward);
-                StringFormatter::send(stream,F("M%cA%c%d<;>R%d\n"), throttleChar, LorS(myLocos[loco].cab), myLocos[loco].cab, DCC::getThrottleDirection(myLocos[loco].cab));
+                StringFormatter::send(stream,F("M%cA%c%d<;>R%d\n"), throttleChar, LorS(myLocos[loco].cab), myLocos[loco].cab, forward);
               }
             }        
             break;      
             case 'X':
               //Emergency Stop  (speed code 1)
               LOOPLOCOS(throttleChar, cab) {
-                DCC::setThrottle(myLocos[loco].cab,1, DCC::getThrottleDirection(myLocos[loco].cab));
+                DCC::setThrottle(myLocos[loco].cab, 1, DCC::getThrottleDirection(myLocos[loco].cab));
+                StringFormatter::send(stream,F("M%cA%c%d<;>V%d\n"), throttleChar, LorS(myLocos[loco].cab), myLocos[loco].cab, -1);
               }
               break;
             case 'I': // Idle, set speed to 0
             case 'Q': // Quit, set speed to 0
               LOOPLOCOS(throttleChar, cab) {
-                DCC::setThrottle(myLocos[loco].cab,1, DCC::getThrottleDirection(myLocos[loco].cab));
+                DCC::setThrottle(myLocos[loco].cab, 0, DCC::getThrottleDirection(myLocos[loco].cab));
+                StringFormatter::send(stream,F("M%cA%c%d<;>V%d\n"), throttleChar, LorS(myLocos[loco].cab), myLocos[loco].cab, 0);
               }
               break;
             }               
+}
+
+  // convert between DCC++ speed values and WiThrottle speed values
+int WiThrottle::DCCToWiTSpeed(int DCCSpeed) {
+  if (DCCSpeed == 0) return 0; //stop is stop
+  if (DCCSpeed == 1) return -1; //eStop value
+  return DCCSpeed - 1; //offset others by 1
+}
+
+  // convert between WiThrottle speed values and DCC++ speed values
+int WiThrottle::WiTToDCCSpeed(int WiTSpeed) {
+  if (WiTSpeed == 0) return 0;  //stop is stop
+  if (WiTSpeed == -1) return 1; //eStop value
+  return WiTSpeed + 1; //offset others by 1
 }
 
 void WiThrottle::loop() {
@@ -332,7 +348,7 @@ void WiThrottle::checkHeartbeat() {
     LOOPLOCOS('*', -1) { 
       if (myLocos[loco].throttle!='\0') {
         DIAG(F("  eStopping cab %d\n"), myLocos[loco].cab);
-        DCC::setThrottle(myLocos[loco].cab, 1, DCC::getThrottleDirection(myLocos[loco].cab)); //eStop
+        DCC::setThrottle(myLocos[loco].cab, 1, DCC::getThrottleDirection(myLocos[loco].cab)); // speed 1 is eStop
       }
     }
     delete this;

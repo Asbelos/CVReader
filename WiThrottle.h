@@ -53,6 +53,8 @@ class WiThrottle {
       bool initSent; // valid connection established
       int turnoutListHash;  // used to check for changes to turnout list
       bool lastPowerState;  // last power state sent to this client
+      int DCCToWiTSpeed(int DCCSpeed);
+      int WiTToDCCSpeed(int WiTSpeed);
       void multithrottle(Print & stream, byte * cmd);
       void locoAction(Print & stream, byte* aval, char throttleChar, int cab);
       void accessory(Print & stream, byte* cmd);
