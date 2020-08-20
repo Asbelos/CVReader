@@ -345,7 +345,7 @@ void WiThrottle::loop() {
 void WiThrottle::checkHeartbeat() {
   // if 2 heartbeats missed... drop connection and eStop any locos still assigned to this client
   if(heartBeatEnable && (millis()-heartBeat > HEARTBEAT_TIMEOUT*2000)) {
-    DIAG(F("WiThrottle(%d) hearbeat missed, dropping connection\n"),clientid);
+    DIAG(F("\n\nWiThrottle(%d) hearbeat missed, dropping connection\n\n"),clientid);
     LOOPLOCOS('*', -1) { 
       if (myLocos[loco].throttle!='\0') {
         DIAG(F("  eStopping cab %d\n"), myLocos[loco].cab);
