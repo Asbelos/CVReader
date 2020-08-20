@@ -241,9 +241,10 @@ void WiThrottle::multithrottle(Print & stream, byte * cmd){
                     StringFormatter::send(stream, F("M%cA%c%d<;>V%d\n"), throttleChar, cmd[3], locoid, DCCToWiTSpeed(DCC::getThrottleSpeed(locoid)));
                     StringFormatter::send(stream, F("M%cA%c%d<;>R%d\n"), throttleChar, cmd[3], locoid, DCC::getThrottleDirection(locoid));
                     StringFormatter::send(stream, F("M%cA%c%d<;>s1\n"), throttleChar, cmd[3], locoid); //default speed step 128
-                    break;
+                    return;
                   }
                }
+               StringFormatter::send(stream, F("HMMax locos (%d) exceeded, %d not added!\n"), MAX_MY_LOCO ,locoid);                    
                break;
           case '-': // remove loco(s) from this client (leave in DCC registration)
                  LOOPLOCOS(throttleChar, locoid) {
