@@ -6,28 +6,34 @@
  */
 #include "Arduino.h"
 #include "DCCEX.h"
-#include "EthernetInterface.h"
+#include "NetworkInterface.h"
 
+DCCEXParser serialParser;
 
-DCCEXParser  serialParser;
+void setup()
+{
 
-void setup() {
-  
   Serial.begin(115200);
   while (!Serial)
   {
     ; // wait for serial port to connect. just in case
   }
-  Serial.println("Starting ...");
-  // EthernetInterface::setup(TCP, 8888); // UDP or TCP are possible
-  EthernetInterface::setup(UDP, 8888); // UDP or TCP are possible
-  DCC::begin(STANDARD_MOTOR_SHIELD);  
-  
-  Serial.println("\nReady for DCC Commands ..."); 
+
+  DIAG(F("\nNetwork Setup In Progress ...\n"));
+  NetworkInterface::setup(ETHERNET, UDP, 8888); // specify WIFI or ETHERNET depending on if you have Wifi or an EthernetShield; Wifi has to be on Serial1 UDP or TCP for the protocol
+  // NetworkInterface::setup(WIFI, UDP);          // Setup without port will use the by default port 2560
+  // NetworkInterface::setup(WIFI);               // setup without port and protocol will use by default TCP on port 2560
+  // NetworkInterface::setup();                   // all defaults ETHERNET, TCP on port 2560
+  DIAG(F("\nNetwork Setup done ..."));
+
+  DCC::begin(STANDARD_MOTOR_SHIELD);
+
+  Serial.println("\nReady for DCC Commands ...");
 }
 
-void loop() {      
-  DCC::loop(); 
-  EthernetInterface::loop();         // loop adapts automatically against UDP or TCP
+void loop()
+{
+  DCC::loop();
+  NetworkInterface::loop(); // loop adapts automatically against UDP or TCP
   serialParser.loop(Serial);
 }

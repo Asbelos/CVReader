@@ -65,6 +65,7 @@ bool WifiInterface::setup2(const __FlashStringHelper* SSid, const __FlashStringH
   // First check... Restarting the Arduino does not restart the ES. 
   //  There may alrerady be a connection with data in the pipeline.
   // If there is, just shortcut the setup and continue to read the data as normal.
+  
   if (checkForOK(200,IPD_SEARCH, true)) {
     DIAG(F("\nPreconfigured Wifi already running with data waiting\n"));
     loopstate=4;  // carry on from correct place 
