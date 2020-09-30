@@ -27,7 +27,7 @@ void WifiTransport::udpHandler()
         IPAddress remote = Udp.remoteIP();
         DIAG(F("From:                   [%d.%d.%d.%d:"), remote[0], remote[1], remote[2], remote[3]);
         char portBuffer[6];
-        DIAG(F("%s]\n"), utoa(Udp.remotePort(), portBuffer, 10)); // DIAG has issues with unsigend int's so go through utoa
+        DIAG(F("%d]\n"), Udp.remotePort()); // DIAG has issues with unsigend int's so go through utoa
 
         // read the packet into packetBufffer
         Udp.read(packetBuffer, MAX_ETH_BUFFER);
@@ -159,7 +159,7 @@ uint8_t WifiTransport::setup()
     }
 
     // Setup the protocol handler
-    DIAG(F("\n\nNetwork Protocol:      [%s]"), p ? "UDP" : "TCP");
+    DIAG(F("\n\nNetwork Protocol:      [%S]"), p ? F("UDP") : F("TCP"));
 
     switch (p)
     {

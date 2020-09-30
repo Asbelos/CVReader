@@ -16,11 +16,10 @@ void EthernetTransport::udpHandler()
         IPAddress remote = Udp.remoteIP();
         DIAG(F("From:                   [%d.%d.%d.%d:"), remote[0], remote[1], remote[2], remote[3]);
         char portBuffer[6];
-        DIAG(F("%s]\n"), utoa(Udp.remotePort(), portBuffer, 10)); // DIAG has issues with unsigend int's so go through utoa
+        DIAG(F("%d]\n"),Udp.remotePort()); 
 
         // read the packet into packetBufffer
-        Udp.read(packetBuffer, MAX_ETH_BUFFER);
-
+        packetBuffer[Udp.read(packetBuffer, MAX_ETH_BUFFER-1)]=0;
         DIAG(F("Command:                [%s]\n"), packetBuffer);
 
         Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
@@ -78,15 +77,16 @@ void EthernetTransport::tcpHandler()
         if (clients[i] && clients[i].available() > 0)
         {
             // read bytes from a client
-            int count = clients[i].read(buffer, MAX_ETH_BUFFER);
+            int count = clients[i].read(buffer, MAX_ETH_BUFFER-1);
+            buffer[count]=0;
             IPAddress remote = client.remoteIP();
             buffer[count] = '\0'; // terminate the string properly
             DIAG(F("\nReceived packet of size:[%d] from [%d.%d.%d.%d]\n"), count, remote[0], remote[1], remote[2], remote[3]);
             DIAG(F("Client #:               [%d]\n"), i);
-            DIAG(F("Command:                [%s]\n"), buffer);
+            DIAG(F("Command:                [%e]\n"), buffer);
 
-            parse(&server, (byte *)packetBuffer, true);
-
+            parse(&(clients[i]), buffer, true);
+            
         }
         // stop any clients which disconnect
         for (byte i = 0; i < MAX_SOCK_NUM; i++)
@@ -95,6 +95,7 @@ void EthernetTransport::tcpHandler()
             {
                 DIAG(F("Disconnect client #%d \n"), i);
                 clients[i].stop();
+                clients[i]=0;
             }
         }
     }

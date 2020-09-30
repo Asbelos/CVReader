@@ -2,7 +2,7 @@
 #define Transport_h
 
 #include <Arduino.h>
-// #include "MemStream.h"
+#include "DCCEXParser.h"
 
 #define MAX_ETH_BUFFER 250
 #define MAX_SOCK_NUM 8
@@ -12,7 +12,8 @@ class Transport
 {
 private:
     uint8_t test;
-
+    static DCCEXParser * transportParser;
+    
 public:
     uint16_t port;
     uint8_t protocol;

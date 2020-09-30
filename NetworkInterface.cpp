@@ -11,7 +11,7 @@ void NetworkInterface::setup(transportType tt, protocolType pt, uint16_t lp)
 {
     uint8_t ok = 0;
 
-    DIAG(F("\n[%s] Transport Setup In Progress ...\n"), tt ? "Ethernet" : "Wifi");
+    DIAG(F("\n[%S] Transport Setup In Progress ...\n"), tt ? F("Ethernet") : F("Wifi"));
 
     switch (tt)
     {
@@ -41,7 +41,7 @@ void NetworkInterface::setup(transportType tt, protocolType pt, uint16_t lp)
         ok = transport->setup();
     }
 
-    DIAG(F("\n\n[%s] Transport %s ..."), tt ? "Ethernet" : "Wifi", ok ? "OK" : "Failed");
+    DIAG(F("\n[%S] Transport %S ..."), tt ? F("Ethernet") : F("Wifi"), ok ? F("OK") : F("Failed"));
     
 }
 

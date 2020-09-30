@@ -1,17 +1,15 @@
 #include <Arduino.h>
 
 #include "DIAG.h"
-// #include "DCCEXParser.h"
-
-#include "StringFormatter.h"
 #include "Transport.h"
 
-// DCCEXParser transportParser;
+DCCEXParser * Transport::transportParser=0;
 
 void Transport::parse(Print * stream,  byte * command, bool blocking) {
-    DIAG(F("DCC parsing:            [%s]\n"), command);
-    // Do the DCC Stuff
-        
-    // echo back (as mock)
-    StringFormatter::send(stream, F("reply to: %s"), command);
+    DIAG(F("Transport parsing:      [%e]\n"), command);
+     if (!transportParser) transportParser=new DCCEXParser();
+     
+    if (command[0]=='<') {
+        transportParser->parse(stream,command,blocking);
+    }
 }
